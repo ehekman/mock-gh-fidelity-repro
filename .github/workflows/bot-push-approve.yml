@@ -11,8 +11,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: feat
+          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Push a commit as the bot, then APPROVE
+      - name: Push then approve with last-push required, stale-dismiss off
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -20,10 +21,17 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           f="BOTPUSH-$(date -u +%s).md"
-          echo "bot-push" > "$f"
+          echo bot-push > "$f"
           git add "$f"
           git commit -m "bot push $f"
           git push origin HEAD:feat
-          echo '===== APPROVE after own push (last-push flag ON) ====='
+          # let the PR head catch up
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            head=$(gh api "repos/${{ github.repository }}/pulls/1" --jq .head.sha)
+            echo "pr_head=$head local=$(git rev-parse HEAD)"
+            [ "$head" = "$(git rev-parse HEAD)" ] && break
+            sleep 2
+          done
+          echo '===== APPROVE ====='
           gh api -i "repos/${{ github.repository }}/pulls/1/reviews" \
-            -f event=APPROVE -f body='bot approve after bot push with last-push flag' || true
+            -f event=APPROVE -f body='approve after own push, last-push required, no stale dismiss' || true
