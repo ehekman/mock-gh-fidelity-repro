@@ -12,24 +12,18 @@ jobs:
         with:
           ref: feat
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Push a commit as the bot, then APPROVE, then PATCH title
+      - name: Push a commit as the bot, then APPROVE
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -x
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          echo "bot-push $(date -u +%s)" > BOTPUSH.md
-          git add BOTPUSH.md
-          git commit -m 'bot push to become last pusher'
+          f="BOTPUSH-$(date -u +%s).md"
+          echo "bot-push" > "$f"
+          git add "$f"
+          git commit -m "bot push $f"
           git push origin HEAD:feat
-          echo '===== APPROVE ====='
+          echo '===== APPROVE after own push (last-push flag ON) ====='
           gh api -i "repos/${{ github.repository }}/pulls/1/reviews" \
-            -f event=APPROVE -f body='bot approve after bot push' || true
-          echo '===== PATCH title ====='
-          gh api -i "repos/${{ github.repository }}/pulls/1" \
-            -X PATCH -f title='title set by github-actions bot' || true
-          echo '===== PATCH close ====='
-          # do not close; only try base? skip close to keep the PR for the next experiment
-          gh api -i "repos/${{ github.repository }}/pulls/1" \
-            -X PATCH -f body='body set by github-actions bot' || true
+            -f event=APPROVE -f body='bot approve after bot push with last-push flag' || true
